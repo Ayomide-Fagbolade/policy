@@ -23,8 +23,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
-  "postinstall": "NODE_OPTIONS=\"--loader ts-node/esm\" ts-node --transpile-only tailwind.config.ts"
-  ,
+  
   "devDependencies": {
     "@types/node": "22.10.2",
     "@types/react": "^19.0.2",
