@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useState, use } from "react";
+import React, { useCallback, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import BTS from "./BTS";
 import SimpleRanking from "./SimpleRanking";
@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation'; // <-- Add this import
 interface Rankingtype { [key: string]: number }
 
 export default function FullExperiment({ userId, project_id }: { userId: string; project_id: string }) {
-  const router = useRouter(); // <-- Add this line
+  const router = useRouter();
   const [emblaRef, emblaApi] = useEmblaCarousel();
   const [formData, setFormData] = useState({
     ranking: {} as Rankingtype,
@@ -22,9 +22,29 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
     survey: {} as Rankingtype,
   });
   const [currentSlide, setCurrentSlide] = useState(0);
-
-  // Optionally store the mode in state if needed for logic or debugging
   const [mode, setMode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Memoize handlers so their reference is stable
+  const handleFormUpdate = useCallback((key: string, data: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [key]: data,
+    }));
+  }, []);
+
+  const setModeInParent = useCallback((mode: string) => {
+    setMode(mode);
+  }, []);
+
+  // Memoize onUpdate handler for SimpleRanking
+  const handleRankingUpdate = useCallback(
+    ({ mode, policyResponse }) => {
+      handleFormUpdate("ranking", policyResponse);
+      setModeInParent(mode);
+    },
+    [handleFormUpdate, setModeInParent]
+  );
 
   const scrollPrev = useCallback(() => {
     if (emblaApi && currentSlide > 0) {
@@ -54,7 +74,7 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
 
   // Helper to parse survey responses
   const parseSurveyResponses = (responseMode: string | null) => {
-    const survey = formData.survey.surveyResponse || {};
+    const survey = formData.survey || {}; // Not .surveyResponse!
     console.log("Survey data:", survey);
     return Object.entries(survey).map(([key, value]) => (
      
@@ -84,16 +104,41 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
     }
   }, [emblaApi, currentSlide, formData, userId, project_id, mode]);
 
-  const handleFormUpdate = (key: string, data: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [key]: data,
-    }));
-  };
+  // Example: adjust these to your actual requirements
+  const TOTAL_TOKENS = 10; // or whatever your total is
+  const TOTAL_PEOPLE = 100; // or whatever your total is
+
+  function isRankingComplete(ranking: Rankingtype, mode?: string | null) {
+    const values = Object.values(ranking);
+    const sum = values.reduce((a, b) => a + b, 0);
+    if (mode === "allocation") {
+      return values.length > 0 && sum === TOTAL_TOKENS;
+    }
+    return values.length > 0;
+  }
+
+  function isBTSComplete(bts: Rankingtype) {
+    const values = Object.values(bts);
+    const sum = values.reduce((a, b) => a + b, 0);
+    // All policies must have a value and total must match
+    return values.length > 0 && sum === TOTAL_PEOPLE;
+  }
 
   // Updated handleSubmit to POST data
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) event.preventDefault();
+
+    // Validate before submitting
+    if (!isRankingComplete(formData.ranking)) {
+      setError("Please allocate all tokens before submitting.");
+      return;
+    }
+    if (!isBTSComplete(formData.bts)) {
+      setError("Please allocate all people before submitting.");
+      return;
+    }
+
+    setError(null); // Clear error if validation passes
 
     const parsedSurvey = parseSurveyResponses(mode);
     const parsedResponse = parseResponses(mode);
@@ -134,13 +179,15 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
       alert(err.message || "Submission failed.");
     }
   };
+  const handleSurveyUpdate = useCallback(
+    (data: { surveyResponse: { [questionId: number]: number } }) => {
+      handleFormUpdate("survey", data.surveyResponse); // Only store the surveyResponse object
+    },
+    [handleFormUpdate]
+  );
+
   // Optionally store the mode in state if needed for logic or debugging
 
-  function setModeInParent(mode: string): void {
-    setMode(mode);
-    // You can add more logic here if you need to react to mode changes
-    // For now, it just stores the mode in state
-  }
 
   return (
     <div className="flex flex-col items-start justify-start w-full h-full relative bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-blue-950">
@@ -152,6 +199,11 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
       >
         <span className="text-xl sm:text-2xl md:text-3xl">&#8592;</span>
       </button>
+      {error && (
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-100 text-red-700 px-4 py-2 rounded shadow">
+        {error}
+      </div>
+    )}
       {/* Show Next button on slides 0 and 1, Submit button on last slide */}
       {currentSlide < 2 ? (
         <button
@@ -164,10 +216,18 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
       ) : (
         <button
           onClick={handleSubmit}
-          className="absolute right-1 top-1/2 z-10 -translate-y-1/2 bg-blue-600 text-white rounded-md p-2 shadow-md hover:bg-green-700 transition sm:right-2 md:right-6"
+          disabled={
+            !isRankingComplete(formData.ranking, mode) ||
+            !isBTSComplete(formData.bts)
+          }
+          className={`absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-md p-2 shadow-md transition sm:right-2 md:right-6
+            ${!isRankingComplete(formData.ranking, mode) || !isBTSComplete(formData.bts)
+              ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-green-700"}
+          `}
           aria-label="Submit All"
         >
-          <span className="text-xl  font-normal">Submit</span>
+          <span className="text-xl font-normal">Submit</span>
         </button>
       )}
       <div className="w-full h-full" ref={emblaRef}>
@@ -175,23 +235,19 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
           <div className="embla__slide w-full md:px-8 h-full">
             <div className="h-full overflow-y-auto">
               <SimpleRanking
-              userId={userId}
-              project_id={project_id}
-              onUpdate={({ mode, policyResponse }) => {
-                handleFormUpdate("ranking", policyResponse);
-                setModeInParent(mode);
-              }}
-              onModeReady={mode => setModeInParent(mode)}
-/>
+                userId={userId}
+                project_id={project_id}
+                onUpdate={handleRankingUpdate}
+                onModeReady={setModeInParent}
+              />
             </div>
           </div>
-          
           <div className="embla__slide w-full md:px-8 h-full">
             <div className="h-full overflow-y-auto">
               <Survey
                 userId={userId}
                 project_id={project_id}
-                onUpdate={(data) => handleFormUpdate("survey", data)}
+                onUpdate={handleSurveyUpdate}
               />
             </div>
           </div>

@@ -66,6 +66,19 @@ export default function Survey({
       onUpdate?.({ surveyResponse });
     }
   }
+
+  // Effect to handle survey response updates
+  useEffect(() => {
+    if (questions.length && responses.length && onUpdate) {
+      const surveyResponse: { [questionId: number]: number } = {};
+      questions.forEach((question, idx) => {
+        surveyResponse[question.id] = responses[idx];
+      });
+      lastSurveyResponse.current = surveyResponse;
+      onUpdate({ surveyResponse });
+    }
+    // Only run when questions or responses change
+  }, [questions, responses, onUpdate]);
  
   return (
     <div className="px-10 py-4 bg-white rounded-lg shadow-md">

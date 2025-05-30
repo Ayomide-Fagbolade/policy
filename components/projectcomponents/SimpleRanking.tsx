@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createSwapy } from 'swapy';
 
 interface Policy {
   id: number;
@@ -36,8 +37,11 @@ const SimpleRanking = ({
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [remainingTokens, setRemainingTokens] = useState(10);
   const [updating, setUpdating] = useState(false);
-  const [loading, setLoading] = useState(true); // <-- loading state
-  const [expanded, setExpanded] = useState<{ [key: number]: boolean }>({}); // <-- add this
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<{ [key: number]: boolean }>({});
+  const [slotMap, setSlotMap] = useState<{ [id: number]: number }>({});
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const swapyRef = useRef<any>(null);
 
   // Fetch policies from API
   useEffect(() => {
@@ -45,6 +49,7 @@ const SimpleRanking = ({
       try {
         const res = await fetch(`/api/${project_id}/policy`);
         const data = await res.json();
+        // Assign each policy a sequential rank
         const policiesWithRank = data.map((policy: any, idx: number) => ({
           ...policy,
           rank: idx + 1,
@@ -54,7 +59,7 @@ const SimpleRanking = ({
       } catch (error) {
         console.error("Failed to fetch policies", error);
       } finally {
-        setLoading(false); // <-- set loading to false after fetch
+        setLoading(false);
       }
     };
     fetchPolicies();
@@ -122,6 +127,57 @@ const SimpleRanking = ({
       lastPolicyResponse.current = updateObj;
     }
   }, [policies, mode, onUpdate]);
+
+  // Setup swapy for drag-and-drop ranking
+  useEffect(() => {
+    if (mode !== 'ranking') return;
+    if (!containerRef.current) return;
+
+    swapyRef.current = createSwapy(containerRef.current);
+
+    // Update array order on swap
+    swapyRef.current.onSwap(({ fromIndex, toIndex }) => {
+      setPolicies(prev => {
+        const updated = [...prev];
+        const [moved] = updated.splice(fromIndex, 1);
+        updated.splice(toIndex, 0, moved);
+        return updated;
+      });
+    });
+
+    // Update rank field after drag-and-drop ends
+    swapyRef.current.onSwapEnd(() => {
+      // Get slot and item values from the DOM
+      const slotNodes = Array.from(containerRef.current!.querySelectorAll('[data-swapy-slot]'));
+      const itemNodes = Array.from(containerRef.current!.querySelectorAll('[data-swapy-item]'));
+
+      // Map slot index to policy id
+      const slotToPolicyId = slotNodes.map((slotNode, idx) => {
+        const itemNode = itemNodes[idx];
+        return {
+          rank: Number(slotNode.getAttribute('data-swapy-slot')),
+          id: Number(itemNode.getAttribute('data-swapy-item')),
+        };
+      });
+
+      // Update slotMap state
+      setSlotMap(
+        Object.fromEntries(slotToPolicyId.map(x => [x.id, x.rank]))
+      );
+
+      setPolicies(prev => {
+        // Update each policy's rank to match its slot value
+        return prev.map(policy => {
+          const found = slotToPolicyId.find(x => x.id === policy.id);
+          return found ? { ...policy, rank: found.rank } : policy;
+        });
+      });
+    });
+
+    return () => {
+      swapyRef.current?.destroy();
+    };
+  }, [mode, policies.length]);
 
   const movePolicy = (policy: Policy, direction: string) => {
     setUpdating(true);
@@ -208,6 +264,8 @@ const SimpleRanking = ({
     }));
   };
 
+  console.log("Rendering policies:", sortedPolicies.map(p => ({id: p.id, rank: p.rank})));
+
   return (
     <div className="bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white  rounded-lg shadow-md  py-4 space-y-6">
       <div className="flex items-center justify-between mb-4">
@@ -217,7 +275,7 @@ const SimpleRanking = ({
       <div className="p-6 ">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">
-            {mode === 'ranking' ? 'Rank the Policies' : 'Allocate 10 Tokens'}
+            {mode === 'ranking' ? 'Rank the Policies (drag and drop based on your preferred rank)' : 'Allocate 10 Tokens'}
           </h2>
           {updating && <span className="text-blue-500">Updating...</span>}
         </div>
@@ -236,94 +294,80 @@ const SimpleRanking = ({
         )}
 
         <div className="space-y-3 ">
-          {sortedPolicies.map((policy, index) => (
-            <div
-              key={policy.id}
-              className="flex items-center p-2  sm:p-4 border border-gray-200 rounded hover:bg-white/90 transition- bg-white"
-            >
-              {mode === 'ranking' ? (
-                <>
-                  <div className="flex-none w-8 h-8 flex items-center justify-center bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white  rounded-full font-medium">
-                    {index + 1}
-                  </div>
-
-                  <div className="flex-grow">
-                    <h3 className="font-bold text-blue-950">{policy.Policy_title}</h3>
-                    {expanded[policy.id] && (
-                      <p className="text-blue-950">{policy.Policy_description}</p>
-                    )}
-                    <button
-                      className="text-blue-700 underline text-sm mt-1"
-                      onClick={() => toggleDescription(policy.id)}
-                    >
-                      {expanded[policy.id] ? 'See less' : 'See more'}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <button
-                      className="p-2 bg-green-700 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                      onClick={() => movePolicy(policy, 'up')}
-                      disabled={index === 0 || updating}
-                      aria-label="Move up"
-                    >
-                      ↑
-                    </button>
-
-                    <button
-                      className="p-2 bg-red-700 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                      onClick={() => movePolicy(policy, 'down')}
-                      disabled={index === sortedPolicies.length - 1 || updating}
-                      aria-label="Move down"
-                    >
-                      ↓
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex-grow">
-                    <h3 className="text-blue-950 font-bold">{policy.Policy_title}</h3>
-                    {expanded[policy.id] && (
-                      <p className="text-gray-600">{policy.Policy_description}</p>
-                    )}
-                    <button
-                      className="text-blue-700 underline text-sm mt-1"
-                      onClick={() => toggleDescription(policy.id)}
-                    >
-                      {expanded[policy.id] ? 'See less' : 'See more'}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <button
-                      className="w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded-full hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                      onClick={() => allocateToken(policy.id, -1)}
-                      disabled={(policy.tokens || 0) <= 0 || updating}
-                      aria-label="Remove token"
-                    >
-                      -
-                    </button>
-
-                    <div className="w-10 text-center font-bold text-blue-950 text-lg">
-                      {policy.tokens || 0}
+          {mode === 'ranking' ? (
+            <div ref={containerRef}>
+              {policies.map((policy, index) => (
+                <div
+                  key={policy.id}
+                  data-swapy-slot={index + 1}
+                  className="mb-2"
+                >
+                  <div data-swapy-item={policy.id}>
+                    <div className="flex items-center p-2 sm:p-4 border border-gray-200 rounded hover:bg-white/90 transition- bg-white">
+                      <div className="flex-none w-8 h-8 flex items-center justify-center bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white rounded-full font-medium">
+                        {slotMap[policy.id] ?? index + 1}
+                      </div>
+                      <div className="flex-grow">
+                        <h3 className="font-bold text-blue-950">{policy.Policy_title}</h3>
+                        {expanded[policy.id] && (
+                          <p className="text-blue-950">{policy.Policy_description}</p>
+                        )}
+                        <button
+                          className="text-blue-700 underline text-sm mt-1"
+                          onClick={() => toggleDescription(policy.id)}
+                        >
+                          {expanded[policy.id] ? 'See less' : 'See more'}
+                        </button>
+                      </div>
                     </div>
-
-                    <button
-                      className="w-8 h-8 flex items-center justify-center bg-green-500 text-white rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                      onClick={() => allocateToken(policy.id, 1)}
-                      disabled={remainingTokens <= 0 || updating}
-                      aria-label="Add token"
-                    >
-                      +
-                    </button>
                   </div>
-                </>
-              )}
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            sortedPolicies.map((policy, index) => (
+              <div
+                key={policy.id}
+                className="flex items-center p-2  sm:p-4 border border-gray-200 rounded hover:bg-white/90 transition- bg-white"
+              >
+                <div className="flex-grow">
+                  <h3 className="text-blue-950 font-bold">{policy.Policy_title}</h3>
+                  {expanded[policy.id] && (
+                    <p className="text-gray-600">{policy.Policy_description}</p>
+                  )}
+                  <button
+                    className="text-blue-700 underline text-sm mt-1"
+                    onClick={() => toggleDescription(policy.id)}
+                  >
+                    {expanded[policy.id] ? 'See less' : 'See more'}
+                  </button>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    className="w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded-full hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => allocateToken(policy.id, -1)}
+                    disabled={(policy.tokens || 0) <= 0 || updating}
+                    aria-label="Remove token"
+                  >
+                    -
+                  </button>
+                  <div className="w-10 text-center font-bold text-blue-950 text-lg">
+                    {policy.tokens || 0}
+                  </div>
+                  <button
+                    className="w-8 h-8 flex items-center justify-center bg-green-500 text-white rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => allocateToken(policy.id, 1)}
+                    disabled={remainingTokens <= 0 || updating}
+                    aria-label="Add token"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            ))
+         ) }
         </div>
-        {/* ...existing code... */}
+        
       </div>
     </div>
   );
