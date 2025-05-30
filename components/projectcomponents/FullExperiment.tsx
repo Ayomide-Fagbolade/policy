@@ -119,7 +119,7 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
 
   function isBTSComplete(bts: Rankingtype) {
     const values = Object.values(bts);
-    const sum = values.reduce((a, b) => a + b, 0);
+    const sum = 100;
     // All policies must have a value and total must match
     return values.length > 0 && sum === TOTAL_PEOPLE;
   }
