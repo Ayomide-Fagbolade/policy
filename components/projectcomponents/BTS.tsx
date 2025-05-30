@@ -85,7 +85,7 @@ const BTS = ({
  
   return (
     <div className="px-10 py-4 bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white   rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold mb-6 text-white">For each of the following policies, estimate the portion of people out of 100, who would rank it among their top 3 policies</h1>
+      <h1 className="text-2xl font-bold mb-6 text-white">Imagine 100 people are voting. Based on what you know, how many of them do you think will include each of the following policies in their Top 3 priorities?</h1>
       <div className="bg-blue-50 p-4 rounded-md mb-6 flex justify-between items-center">
         <span className="font-medium text-blue-800">People remaining to allocate:</span>
         <span className={`text-xl font-bold ${remaining === 0 ? 'text-green-600' : 'text-blue-600'}`}>
