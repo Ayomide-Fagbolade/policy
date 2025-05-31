@@ -216,15 +216,7 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
       ) : (
         <button
           onClick={handleSubmit}
-          disabled={
-            !isRankingComplete(formData.ranking, mode) 
-            
-          }
-          className={`absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-md p-2 shadow-md transition sm:right-2 md:right-6
-            ${!isRankingComplete(formData.ranking, mode) 
-              ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-              : "bg-blue-600 text-white hover:bg-green-700"}
-          `}
+          className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-md p-2 shadow-md transition sm:right-2 md:right-6 bg-blue-600 text-white hover:bg-green-700"
           aria-label="Submit All"
         >
           <span className="text-xl font-normal">Submit</span>
