@@ -221,7 +221,7 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
             
           }
           className={`absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-md p-2 shadow-md transition sm:right-2 md:right-6
-            ${!isRankingComplete(formData.ranking, mode) || !isBTSComplete(formData.bts)
+            ${!isRankingComplete(formData.ranking, mode) 
               ? "bg-gray-400 text-gray-700 cursor-not-allowed"
               : "bg-blue-600 text-white hover:bg-green-700"}
           `}
