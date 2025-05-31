@@ -304,9 +304,14 @@ const SimpleRanking = ({
                 >
                   <div data-swapy-item={policy.id}>
                     <div className="flex items-center p-2 sm:p-4 border border-gray-200 rounded hover:bg-white/90 transition- bg-white">
-                      <div className="flex-none w-8 h-8 flex items-center justify-center bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white rounded-full font-medium">
+                      {/* Only this badge is draggable */}
+                      <div
+                        className="flex-none w-8 h-8 flex items-center justify-center bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white rounded-full font-medium cursor-move"
+                        // Do NOT add data-swapy-no-drag here
+                      >
                         {slotMap[policy.id] ?? index + 1}
                       </div>
+                      {/* The rest is NOT draggable */}
                       <div className="flex-grow" data-swapy-no-drag>
                         <h3 className="font-bold text-blue-950">{policy.Policy_title}</h3>
                         {expanded[policy.id] && (
