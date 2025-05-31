@@ -386,4 +386,4 @@ const SimpleRanking = ({
         
       </div>
     </div>
-  );
+  );}
