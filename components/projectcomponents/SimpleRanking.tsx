@@ -302,7 +302,7 @@ const SimpleRanking = ({
                   data-swapy-slot={index + 1}
                   className="mb-2"
                 >
-                  <div data-swapy-item={policy.id} className='mr-2'>
+                  <div data-swapy-item={policy.id} className='w-3/4' >
                     <div className="flex items-center p-2 sm:p-4 border border-gray-200 rounded hover:bg-white/90 transition- bg-white">
                       <div className="flex-none w-8 h-8 flex items-center justify-center bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white rounded-full font-medium">
                         {slotMap[policy.id] ?? index + 1}
