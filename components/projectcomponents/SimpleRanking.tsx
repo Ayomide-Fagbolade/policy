@@ -307,7 +307,7 @@ const SimpleRanking = ({
                       <div className="flex-none w-8 h-8 flex items-center justify-center bg-gradient-to-r from-[#001F3F] via-[#003366] to-[#004080] text-white rounded-full font-medium">
                         {slotMap[policy.id] ?? index + 1}
                       </div>
-                      <div className="flex-grow">
+                      <div className="flex-grow" data-swapy-no-drag>
                         <h3 className="font-bold text-blue-950">{policy.Policy_title}</h3>
                         {expanded[policy.id] && (
                           <p className="text-blue-950">{policy.Policy_description}</p>
