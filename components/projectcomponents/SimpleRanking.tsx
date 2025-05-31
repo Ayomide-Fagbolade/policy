@@ -302,7 +302,7 @@ const SimpleRanking = ({
                   data-swapy-slot={index + 1}
                   className="mb-2"
                 >
-                  <div data-swapy-item={policy.id} className='w-4/5' >
+                  <div data-swapy-item={policy.id} className='w-3/4' >
                     <div className="flex items-center p-2 sm:p-4 border border-gray-200 rounded hover:bg-white/90 transition- bg-white">
                       {/* Drag button is the only draggable part */}
                       <button
