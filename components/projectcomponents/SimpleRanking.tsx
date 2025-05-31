@@ -387,3 +387,4 @@ const SimpleRanking = ({
       </div>
     </div>
   );}
+  export default SimpleRanking;
