@@ -133,10 +133,7 @@ export default function FullExperiment({ userId, project_id }: { userId: string;
       setError("Please allocate all tokens before submitting.");
       return;
     }
-    if (!isBTSComplete(formData.bts)) {
-      setError("Please allocate all people before submitting.");
-      return;
-    }
+    
 
     setError(null); // Clear error if validation passes
 
